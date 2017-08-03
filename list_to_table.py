@@ -1,4 +1,5 @@
 from pprint import pprint
+import re
 
 from shared import *
 
@@ -14,45 +15,12 @@ WIKI_LINK_SUFFIX = ']]'
 def parse_text(text):
     table_lines = []
     for line_text in text.split('\n'):
-##        print(line_text)
+        print(line_text)
         line_info = parse_list_line(line_text)
         table_line = make_table_line(line_info)
         table_lines.append(table_line)
 
     return '\n'.join(table_lines)
-
-def parse_number_year(number_year_chunk):
-    number_begin_separator = '*第'
-    number_end_separator = '回（'
-    number = between(number_year_chunk,
-                                  number_begin_separator,
-                                  number_end_separator)
-
-    year_begin_separator = '（[['
-    year_end_separator = '年]]）'
-    year = between(number_year_chunk,
-                                year_begin_separator,
-                                year_end_separator)
-
-    return number, year
-
-def parse_author_title(author_title_chunk):
-    items_separator = '・'
-    books = 0
-    authors = []
-    titles = []
-    
-    for item in author_title_chunk.split(items_separator):
-##        print(item)
-        author, title = item.split(' 『')
-        title = title.strip().rstrip('』')
-
-        authors.append(author)
-        titles.append(title)
-        
-        books += 1
-
-    return books, authors, titles
 
 def parse_list_line(list_line_text):
     line_info = {
@@ -63,26 +31,32 @@ def parse_list_line(list_line_text):
         'authors': [],
         'titles': []
     }
-    main_separator = ' - '
-    no_prize = '該当なし'
+
+    number_year_re_str = '\*第(\d+?)回[ ]*?（\[\[(\d{4})年\]\]）'
+    author_title_re_str = '[ ・](?:(\[\[.*?\]\])[ ]『(.*?)』)'
+    no_prize_re_str = '.*?該当なし'
     
-    number_year_chunk, author_title_chunk = list_line_text.split(main_separator)
+    number_year_re = re.compile(number_year_re_str)
+    author_title_re = re.compile(author_title_re_str)
+    no_prize_re = re.compile(no_prize_re_str)
 
-    number, year = parse_number_year(number_year_chunk)
-    line_info['number'], line_info['year'] = number, year
-
-    if (no_prize in author_title_chunk):
+    number, year = number_year_re.findall(list_line_text)[0]
+    line_info['number'] = number
+    line_info['year'] = year
+    
+    if (no_prize_re.match(list_line_text)):
         line_info['no_prize'] = True
-    else:
-##        print(author_title_chunk)
-        books, authors, titles = parse_author_title(author_title_chunk)
 
-        line_info['books'] = books
-        line_info['authors'] = authors
-        line_info['titles'] = titles
+    books = 0
+    for author, title in author_title_re.findall(list_line_text):
+        books += 1
+        line_info['authors'].append(author)
+        line_info['titles'].append(title)
+        
+    line_info['books'] = books
 
     return line_info
-
+    
 #------------------------------------------------------------------------------#
 #                                MAKE SECTION                                  #
 #------------------------------------------------------------------------------#
@@ -122,7 +96,6 @@ def analyze_wikilink(link_text):
         'link' : ''
         }
 
-
     if (is_one_link(link_text)):
         link = link_text.lstrip(WIKI_LINK_PREFIX)
         link = link.rstrip(WIKI_LINK_SUFFIX)
@@ -156,7 +129,6 @@ def make_author_link(author_text):
 
 def make_title_link(title_text):
     link_info = analyze_wikilink(title_text)
-    
     
     if not link_info['redlink']:
         link_text = "''{{нп3|||ja|%s}}'' ({{lang-ja|%s}})" % (link_info['link'],
@@ -204,16 +176,16 @@ def make_table_line(line_info):
 #                              LAUNCH SECTION                                  #
 #------------------------------------------------------------------------------#
 
-list_text = """*第1回（[[1949年]]） - [[井伏鱒二]] 『本日休診』他
-*第2回（[[1950年]]） - [[宇野浩二]] 『思ひ川』
-*第3回（[[1951年]]） - [[大岡昇平]] 『[[野火 (小説)|野火]]』
-*第4回（[[1952年]]） - [[阿川弘之]] 『春の城』
-*第5回（[[1953年]]） - 該当なし
-*第6回（[[1954年]]） - [[佐藤春夫]] 『[[与謝野晶子|晶子]]曼陀羅』
-*第7回（[[1955年]]） - [[里見とん|里見弴]] 『恋ごころ』 ・ [[幸田文]] 『黒い裾』
-*第8回（[[1956年]]） - [[三島由紀夫]] 『[[金閣寺 (小説)|金閣寺]]』 ・ [[久保田万太郎]] 『三の酉』
-*第9回（[[1957年]]） - [[室生犀星]] 『杏っ子』 ・ [[野上弥生子]] 『[[迷路 (野上弥生子の小説)|迷路]]』
-*第10回（[[1958年]]） - 該当なし"""
+list_text = """*第11回（[[1959年]]） - [[正宗白鳥]] 『今年の秋』 ・ [[中野重治]] 『梨の花』
+*第12回（[[1960年]]） - [[外村繁]] 『澪標』
+*第13回（[[1961年]]） - 該当なし
+*第14回（[[1962年]]） - [[安部公房]] 『[[砂の女]]』
+*第15回（[[1963年]]） - [[井上靖]] 『風濤』
+*第16回（[[1964年]]） - [[上林暁]] 『白い屋形船』
+*第17回（[[1965年]]） - [[庄野潤三]] 『夕べの雲』
+*第18回（[[1966年]]） - [[丹羽文雄]] 『一路』
+*第19回（[[1967年]]） - [[網野菊]] 『一期一会』
+*第20回（[[1968年]]） - [[河野多惠子]] 『不意の声』 ・ [[瀧井孝作]] 『野趣』"""
 
 def cleanup(text):
     if (WIKI_LINK_PREFIX in text):
